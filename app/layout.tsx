@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Jost } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const inter = Jost({
+const inter = DM_Sans({
   variable: "--font-inter",
   subsets: ["latin"],
 });

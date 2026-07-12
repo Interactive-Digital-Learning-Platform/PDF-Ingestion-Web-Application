@@ -44,7 +44,7 @@ function statusVariant(status: Job["status"]): "default" | "secondary" | "destru
   return "secondary";
 }
 
-function JobRow({ jobId, onDelete, isDeleting }: { jobId: string; onDelete: (jobId: string) => void; isDeleting: boolean }) {
+export function JobRow({ jobId, onDelete, isDeleting }: { jobId: string; onDelete: (jobId: string) => void; isDeleting: boolean }) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useJobStatusQuery(jobId, true);
 
@@ -94,7 +94,7 @@ function JobRow({ jobId, onDelete, isDeleting }: { jobId: string; onDelete: (job
         <Badge variant={statusVariant(data.status)}>{data.status}</Badge>
       </TableCell>
       <TableCell className="capitalize">{data.current_stage || "queued"}</TableCell>
-      <TableCell className="min-w-[180px]">
+      <TableCell className="min-w-45">
         <Progress value={Math.max(0, Math.min(100, data.progress ?? 0))} />
       </TableCell>
       <TableCell>{data.pages_processed ?? 0}</TableCell>
