@@ -53,21 +53,24 @@ export function NavProjects({
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-48 rounded-lg"
+                className="w-fit"
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
                 <DropdownMenuItem>
-                  <FolderIcon className="text-muted-foreground" />
+                  <FolderIcon
+                  />
                   <span>View Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <ArrowRightIcon className="text-muted-foreground" />
+                  <ArrowRightIcon
+                  />
                   <span>Share Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Trash2Icon className="text-muted-foreground" />
+                <DropdownMenuItem variant="destructive">
+                  <Trash2Icon
+                  />
                   <span>Delete Project</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
