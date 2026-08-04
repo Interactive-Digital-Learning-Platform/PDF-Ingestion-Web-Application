@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { DM_Sans } from "next/font/google";
+import { Ubuntu } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const inter = DM_Sans({
+const inter = Ubuntu({
   variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["300","400","500","700"]
 });
 
 export const metadata: Metadata = {
