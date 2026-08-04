@@ -18,6 +18,7 @@ function getWebSocketBaseUrl(): string {
 export function connectJobProgress({ jobId, onEvent, onError }: ConnectOptions): () => void {
   const base = getWebSocketBaseUrl().replace(/\/$/, "");
   const socket = new WebSocket(`${base}/ingest/ws/${jobId}`);
+  let intentionallyClosed = false;
 
   socket.onmessage = (event) => {
     try {
@@ -32,10 +33,16 @@ export function connectJobProgress({ jobId, onEvent, onError }: ConnectOptions):
   };
 
   socket.onerror = () => {
-    onError?.("Realtime connection failed, polling fallback is active.");
+    if (!intentionallyClosed) {
+      onError?.("Realtime connection failed, polling fallback is active.");
+    }
   };
 
   return () => {
-    socket.close();
+    intentionallyClosed = true;
+
+    if (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN) {
+      socket.close();
+    }
   };
 }
