@@ -95,10 +95,20 @@ export function JobRow({ jobId, onDelete, isDeleting }: { jobId: string; onDelet
       </TableCell>
       <TableCell className="capitalize">{data.current_stage || "queued"}</TableCell>
       <TableCell className="min-w-45">
-        <Progress value={Math.max(0, Math.min(100, data.progress ?? 0))} />
+        {(() => {
+          const pct = Math.max(0, Math.min(100, data.progress ?? 0));
+          return (
+            <div className="flex items-center gap-2">
+              <Progress value={pct} className="flex-1" />
+              <span className="w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                {pct}%
+              </span>
+            </div>
+          );
+        })()}
       </TableCell>
-      <TableCell>{data.pages_processed ?? 0}</TableCell>
-      <TableCell>{data.chunks_created ?? 0}</TableCell>
+      <TableCell className="text-right tabular-nums">{data.pages_processed ?? 0}</TableCell>
+      <TableCell className="text-right tabular-nums">{data.chunks_created ?? 0}</TableCell>
       <TableCell className="text-right">
         <Button
           variant="outline"
@@ -246,7 +256,7 @@ export function DashboardShell() {
           <Badge variant="outline" className="rounded-full px-3 py-1 text-xs">
             Realtime tracking
           </Badge>
-          <UserButton afterSignOutUrl="/sign-in" />
+          <UserButton />
         </div>
       </header>
 

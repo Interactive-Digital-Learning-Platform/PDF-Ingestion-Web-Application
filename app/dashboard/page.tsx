@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   FileText,
   MoreHorizontal,
   Download,
   Trash2,
-  ExternalLink,
   Search,
   SlidersHorizontal,
   ArrowUpDown,
@@ -14,6 +14,7 @@ import {
   Plus,
   Layers,
   FileStack,
+  Loader2,
 } from 'lucide-react'
 import {
   Table,
@@ -34,40 +35,35 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner';
 
+import { toErrorMessage } from '@/lib/api/ingestion'
+import type { Job } from '@/lib/api/types'
+import { ingestionQueryKeys, useDeleteJobMutation, useJobsQuery } from '@/lib/query/ingestion'
+import { useQueryClient } from '@tanstack/react-query'
+
+function formatAddedDate(job: Job): string {
+  const value = job.completed_at ?? job.started_at
+  if (!value) {
+    return "—"
+  }
+  return new Date(value).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
+}
 
 export default function DocumentsPage() {
+  const { data: jobs, isLoading } = useJobsQuery()
+  const deleteMutation = useDeleteJobMutation()
+  const queryClient = useQueryClient()
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
 
-  const [jobs, setJobs] = useState([
-    {
-      id: '1',
-      filename: 'Q3_Financial_Report.pdf',
-      status: 'done',
-      stage: 'completed',
-      progress: 100,
-      pages: 45,
-      chunks: 342,
-    },
-    {
-      id: '2',
-      filename: 'Employee_Handbook_2024.pdf',
-      status: 'failed',
-      stage: 'extracting',
-      progress: 32,
-      pages: 12,
-      chunks: 45,
-    },
-    {
-      id: '3',
-      filename: 'Product_Roadmap_v2.pdf',
-      status: 'processing',
-      stage: 'chunking',
-      progress: 65,
-      pages: 8,
-      chunks: 112,
-    },
-  ])
-  
-  const documents = jobs.filter((j) => j.status === 'done')
+  const documents = useMemo(
+    () => (jobs ?? []).filter((j) => j.status === 'done' || j.status === 'failed'),
+    [jobs],
+  )
+  const indexedDocuments = useMemo(() => documents.filter((d) => d.status === 'done'), [documents])
+
   const [query, setQuery] = useState('')
   const filtered = useMemo(
     () =>
@@ -76,12 +72,24 @@ export default function DocumentsPage() {
       ),
     [documents, query],
   )
-  const totalPages = documents.reduce((sum, d) => sum + d.pages, 0)
-  const totalChunks = documents.reduce((sum, d) => sum + d.chunks, 0)
-  const handleDelete = (id: string, name: string) => {
-    // deleteJob(id)
-    toast.success(`Deleted "${name}".`)
+  const totalPages = indexedDocuments.reduce((sum, d) => sum + (d.pages_processed ?? 0), 0)
+  const totalChunks = indexedDocuments.reduce((sum, d) => sum + (d.chunks_created ?? 0), 0)
+
+  const handleDelete = async (jobId: string, filename: string) => {
+    try {
+      setDeletingJobId(jobId)
+      await deleteMutation.mutateAsync(jobId)
+      queryClient.setQueryData<Job[]>(ingestionQueryKeys.jobs(), (prev) =>
+        prev?.filter((job) => job.job_id !== jobId),
+      )
+      toast.success(`Deleted "${filename}".`)
+    } catch (error) {
+      toast.error(toErrorMessage(error))
+    } finally {
+      setDeletingJobId(null)
+    }
   }
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -94,9 +102,11 @@ export default function DocumentsPage() {
             Browse and manage your ingested knowledge base.
           </p>
         </div>
-        <Button size="sm">
-          <Plus className="mr-1.5 h-4 w-4" />
-          New Document
+        <Button size="sm" asChild>
+          <Link href="/dashboard/upload">
+            <Plus className="mr-1.5 h-4 w-4" />
+            New Document
+          </Link>
         </Button>
       </div>
 
@@ -110,7 +120,7 @@ export default function DocumentsPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="text-2xl font-semibold tabular-nums tracking-tight">
-            {documents.length}
+            {indexedDocuments.length}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             in your knowledge base
@@ -194,7 +204,16 @@ export default function DocumentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {isLoading ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="h-40 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <p className="text-sm font-medium">Loading documents...</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filtered.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={6} className="h-40 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -214,7 +233,7 @@ export default function DocumentsPage() {
               </TableRow>
             ) : (
               filtered.map((doc) => (
-                <TableRow key={doc.id} className="group">
+                <TableRow key={doc.job_id} className="group">
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-muted/50">
@@ -226,24 +245,34 @@ export default function DocumentsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">
-                    {doc.pages}
+                    {doc.pages_processed ?? 0}
                   </TableCell>
                   <TableCell>
                     <Badge
                       variant="secondary"
                       className="font-normal tabular-nums"
                     >
-                      {doc.chunks}
+                      {doc.chunks_created ?? 0}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="gap-1.5 font-normal">
-                      <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
-                      Indexed
-                    </Badge>
+                    {doc.status === 'done' ? (
+                      <Badge
+                        variant="outline"
+                        className="gap-1.5 border-transparent bg-green-500/10 font-normal text-green-600 dark:bg-green-500/15 dark:text-green-400"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                        Indexed
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive" className="gap-1.5 font-normal">
+                        <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                        Failed
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    Just now
+                    {formatAddedDate(doc)}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -252,16 +281,13 @@ export default function DocumentsPage() {
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Actions for ${doc.filename}`}
-                          className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
+                          disabled={deletingJobId === doc.job_id}
+                          className="text-muted-foreground"
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem>
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          View source
-                        </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Download className="mr-2 h-4 w-4" />
                           Download
@@ -269,7 +295,7 @@ export default function DocumentsPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           variant="destructive"
-                          onClick={() => handleDelete(doc.id, doc.filename)}
+                          onClick={() => handleDelete(doc.job_id, doc.filename)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Delete
