@@ -1,10 +1,11 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { deleteJob, getJobStatus, uploadPdfs } from "@/lib/api/ingestion";
+import { deleteJob, getJobStatus, listJobs, uploadPdfs } from "@/lib/api/ingestion";
 
 export const ingestionQueryKeys = {
   job: (jobId: string) => ["ingestion-job", jobId] as const,
+  jobs: () => ["ingestion-jobs"] as const,
 };
 
 export function useUploadPdfsMutation() {
@@ -22,6 +23,14 @@ export function useJobStatusQuery(jobId: string, enabled = true) {
       const status = query.state.data?.status;
       return status === "done" || status === "failed" ? false : 5000;
     },
+  });
+}
+
+export function useJobsQuery() {
+  return useQuery({
+    queryKey: ingestionQueryKeys.jobs(),
+    queryFn: listJobs,
+    refetchInterval: 15000,
   });
 }
 

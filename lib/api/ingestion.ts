@@ -32,6 +32,11 @@ export async function getJobStatus(jobId: string): Promise<Job> {
   return response.data;
 }
 
+export async function listJobs(): Promise<Job[]> {
+  const response = await apiClient.get<{ jobs: Job[] }>("/ingest/jobs");
+  return response.data.jobs;
+}
+
 export async function deleteJob(jobId: string): Promise<{ message: string; qdrant_deleted: number }> {
   const response = await apiClient.delete<{ message: string; qdrant_deleted: number }>(
     `/ingest/${jobId}`,
