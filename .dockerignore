@@ -1,0 +1,42 @@
+# Keep the build context small and secrets out of the image.
+
+# Dependencies (reinstalled inside the image from the lockfile)
+node_modules
+.pnp
+.pnp.*
+
+# Build output (rebuilt inside the image)
+.next
+out
+build
+
+# Env files — real values are passed as build args / runtime env
+.env
+.env.*
+!.env.example
+
+# Version control / CI
+.git
+.gitignore
+.github
+
+# Editor / OS cruft
+.vscode
+.idea
+.DS_Store
+*.pem
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Misc local-only
+*.tsbuildinfo
+.clerk
+.vercel
+coverage
+Dockerfile
+.dockerignore
+README.md
