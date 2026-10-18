@@ -1,12 +1,34 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { deleteJob, getJobStatus, listJobs, uploadPdfs } from "@/lib/api/ingestion";
+import {
+  deleteJob,
+  getCurriculum,
+  getJobStatus,
+  listJobs,
+  updateJobTags,
+  uploadPdfs,
+} from "@/lib/api/ingestion";
 
 export const ingestionQueryKeys = {
   job: (jobId: string) => ["ingestion-job", jobId] as const,
   jobs: () => ["ingestion-jobs"] as const,
+  curriculum: () => ["ingestion-curriculum"] as const,
 };
+
+export function useCurriculumQuery() {
+  return useQuery({
+    queryKey: ingestionQueryKeys.curriculum(),
+    queryFn: getCurriculum,
+    staleTime: Infinity,
+  });
+}
+
+export function useUpdateJobTagsMutation() {
+  return useMutation({
+    mutationFn: updateJobTags,
+  });
+}
 
 export function useUploadPdfsMutation() {
   return useMutation({

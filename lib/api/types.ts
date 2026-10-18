@@ -14,12 +14,24 @@ export type Job = {
   error_message: string | null;
   started_at: string | null;
   completed_at: string | null;
+  caller_metadata?: Record<string, unknown> | null;
+};
+
+export type DocumentTags = {
+  grade: number | null;
+  subject: string | null;
+};
+
+export type Curriculum = {
+  grades: number[];
+  subjects: string[];
 };
 
 export type UploadJob = {
   job_id: string;
   filename: string;
   status: JobStatus;
+  caller_metadata?: Record<string, unknown> | null;
 };
 
 export type UploadResponse = {
@@ -37,6 +49,6 @@ export type WsProgressEvent = {
 };
 
 export type ApiError = {
-  detail?: string;
+  detail?: string | { msg: string }[];
   message?: string;
 };
