@@ -15,6 +15,7 @@ import {
   Layers,
   FileStack,
   Loader2,
+  Tags,
 } from 'lucide-react'
 import {
   Table,
@@ -33,12 +34,28 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { toast } from 'sonner';
 
 import { toErrorMessage } from '@/lib/api/ingestion'
-import type { Job } from '@/lib/api/types'
-import { ingestionQueryKeys, useDeleteJobMutation, useJobsQuery } from '@/lib/query/ingestion'
+import type { DocumentTags, Job } from '@/lib/api/types'
+import {
+  ingestionQueryKeys,
+  useCurriculumQuery,
+  useDeleteJobMutation,
+  useJobsQuery,
+  useUpdateJobTagsMutation,
+} from '@/lib/query/ingestion'
 import { useQueryClient } from '@tanstack/react-query'
+import { EMPTY_TAGS, isUntagged, jobTags } from '@/lib/tags'
+import { TagSelects, formatTags } from '@/components/dashboard/tag-selects'
 
 function formatAddedDate(job: Job): string {
   const value = job.completed_at ?? job.started_at
@@ -57,6 +74,34 @@ export default function DocumentsPage() {
   const deleteMutation = useDeleteJobMutation()
   const queryClient = useQueryClient()
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
+  const { data: curriculum } = useCurriculumQuery()
+  const updateTagsMutation = useUpdateJobTagsMutation()
+  const [editing, setEditing] = useState<Job | null>(null)
+  const [editTags, setEditTags] = useState<DocumentTags>(EMPTY_TAGS)
+
+  const openTagEditor = (job: Job) => {
+    setEditing(job)
+    setEditTags(jobTags(job))
+  }
+
+  const saveTags = async () => {
+    if (!editing) {
+      return
+    }
+    try {
+      const updated = await updateTagsMutation.mutateAsync({
+        jobId: editing.job_id,
+        tags: editTags,
+      })
+      queryClient.setQueryData<Job[]>(ingestionQueryKeys.jobs(), (prev) =>
+        prev?.map((job) => (job.job_id === updated.job_id ? updated : job)),
+      )
+      toast.success(`Updated tags for "${editing.filename}".`)
+      setEditing(null)
+    } catch (error) {
+      toast.error(toErrorMessage(error))
+    }
+  }
 
   const documents = useMemo(
     () => (jobs ?? []).filter((j) => j.status === 'done' || j.status === 'failed'),
@@ -195,7 +240,8 @@ export default function DocumentsPage() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[42%]">Document</TableHead>
+              <TableHead className="w-[34%]">Document</TableHead>
+              <TableHead>Tags</TableHead>
               <TableHead>Pages</TableHead>
               <TableHead>Chunks</TableHead>
               <TableHead>Status</TableHead>
@@ -206,7 +252,7 @@ export default function DocumentsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="h-40 text-center">
+                <TableCell colSpan={7} className="h-40 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <p className="text-sm font-medium">Loading documents...</p>
@@ -215,7 +261,7 @@ export default function DocumentsPage() {
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={6} className="h-40 text-center">
+                <TableCell colSpan={7} className="h-40 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <FileText className="h-7 w-7 opacity-40" />
                     <p className="text-sm font-medium">
@@ -243,6 +289,17 @@ export default function DocumentsPage() {
                         {doc.filename}
                       </span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        isUntagged(jobTags(doc))
+                          ? 'text-sm text-amber-600 dark:text-amber-400'
+                          : 'text-sm text-muted-foreground'
+                      }
+                    >
+                      {formatTags(jobTags(doc))}
+                    </span>
                   </TableCell>
                   <TableCell className="tabular-nums text-muted-foreground">
                     {doc.pages_processed ?? 0}
@@ -288,6 +345,10 @@ export default function DocumentsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={() => openTagEditor(doc)}>
+                          <Tags className="mr-2 h-4 w-4" />
+                          Edit tags
+                        </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Download className="mr-2 h-4 w-4" />
                           Download
@@ -309,6 +370,34 @@ export default function DocumentsPage() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit tags</DialogTitle>
+            <DialogDescription>
+              {editing?.filename}. The assistant searches books from the student&apos;s grade and
+              subject first. Changes apply straight away, with no re-ingestion.
+            </DialogDescription>
+          </DialogHeader>
+          <TagSelects
+            curriculum={curriculum}
+            value={editTags}
+            onChange={setEditTags}
+            disabled={updateTagsMutation.isPending}
+            label={editing?.filename}
+          />
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button size="sm" disabled={updateTagsMutation.isPending} onClick={() => void saveTags()}>
+              {updateTagsMutation.isPending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

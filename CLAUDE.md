@@ -36,7 +36,8 @@ Defined in `.env` (values not committed):
 
 **Data flow for ingestion jobs** is layered:
 - `lib/api/client.ts` — shared axios instance (`apiClient`), base URL from `NEXT_PUBLIC_API_BASE_URL`.
-- `lib/api/ingestion.ts` — raw API calls: `uploadPdfs`, `getJobStatus`, `deleteJob`, plus `toErrorMessage` for normalizing axios/API errors for toasts.
+- `lib/api/ingestion.ts` — raw API calls: `getCurriculum` (grade and subject lists), `uploadPdfs` (sends a per-file `metadata` JSON array of `{grade, subject}` tags), `updateJobTags` (`PATCH /ingest/{id}/metadata`), `getJobStatus`, `deleteJob`, plus `toErrorMessage` for normalizing axios/API errors for toasts.
+- `lib/tags.ts` — `guessTags` (prefills grade/subject from a filename), `jobTags` (reads them from `caller_metadata`); `components/dashboard/tag-selects.tsx` holds the shared Grade/Subject dropdowns used by the upload page (files are staged and tagged before "Start ingestion") and the My Documents "Edit tags" dialog.
 - `lib/api/types.ts` — shared types (`Job`, `JobStatus`, `UploadResponse`, `WsProgressEvent`, etc.) mirroring the backend's job schema.
 - `lib/query/ingestion.ts` — TanStack Query hooks (`useUploadPdfsMutation`, `useJobStatusQuery`, `useDeleteJobMutation`). `useJobStatusQuery` polls every 5s via `refetchInterval` until the job reaches `done`/`failed`, acting as a fallback when the WebSocket isn't delivering updates.
 - `lib/ws/jobProgress.ts` — `connectJobProgress` opens a WebSocket to `{WS_BASE}/ingest/ws/{jobId}` and pushes `WsProgressEvent`s to a callback; closes itself on terminal status. Errors from the socket surface as a toast telling the user polling is taking over — the query polling above is what actually keeps data fresh in that case.

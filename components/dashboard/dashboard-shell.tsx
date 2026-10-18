@@ -27,6 +27,8 @@ import { ingestionQueryKeys, useDeleteJobMutation, useJobStatusQuery, useUploadP
 import type { UploadFormValues } from "@/lib/validation/upload";
 import { uploadSchema } from "@/lib/validation/upload";
 import { connectJobProgress } from "@/lib/ws/jobProgress";
+import { jobTags } from "@/lib/tags";
+import { formatTags } from "@/components/dashboard/tag-selects";
 
 type UploadsTableProps = {
   jobIds: string[];
@@ -89,7 +91,10 @@ export function JobRow({ jobId, onDelete, isDeleting }: { jobId: string; onDelet
 
   return (
     <TableRow>
-      <TableCell className="font-medium">{data.filename}</TableCell>
+      <TableCell>
+        <div className="font-medium">{data.filename}</div>
+        <div className="text-xs text-muted-foreground">{formatTags(jobTags(data))}</div>
+      </TableCell>
       <TableCell>
         <Badge variant={statusVariant(data.status)}>{data.status}</Badge>
       </TableCell>
